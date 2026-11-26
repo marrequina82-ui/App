@@ -1,46 +1,93 @@
 import { Platform } from "react-native";
 
-// FittonesuGo design tokens. Brand palette from the redesign brief, with two
-// contrast adjustments: buttons use the dark green (white text 6.9:1) instead of
-// #4CAF72 (2.9:1), and secondary text is a darker gray (5.9:1) than #7A827B (3.8:1).
-// Every text colour meets WCAG AA 4.5:1 on its background.
+// FittonesuGo design tokens. Dark (default, matches the camera scanner) and light palettes.
+// Every text colour meets WCAG AA 4.5:1 on the surface it is used on.
+// The camera screens always use the dark look, whatever the theme.
 
-export const colors = {
+export type ThemeName = "dark" | "light";
+
+const dark = {
   // Surfaces
-  bg: "#F8F9F5", // warm off-white
+  bg: "#0B0F0C",
+  card: "#151B16",
+  surfaceTint: "#1C241D",
+  border: "#232C24",
+  borderStrong: "#4A5A4C", // input outline, 3.1:1 on card
+  glass: "rgba(255,255,255,0.14)", // round floating buttons
+
+  // Brand: lime on near-black
+  primary: "#DDF58A", // solid buttons, active states (dark text 14:1)
+  primaryDark: "#DDF58A", // accent text and icons on dark surfaces
+  primaryBright: "#7BD389", // decorative fills
+  primarySoft: "#1F2920", // chips, tracks, inactive segments
+  onPrimary: "#0B0F0C", // text and icons on lime
+  onLime: "#0B0F0C",
+
+  // Hero gradient (calorie progress, AI analysis, summaries only)
+  heroTop: "#173A26",
+  heroBottom: "#21573A",
+  onHero: "#FFFFFF",
+  onHeroMuted: "#C9E3D1", // 7:1 on heroBottom
+  lime: "#DDF58A",
+  mint: "#DDF58A",
+
+  // Text
+  text: "#F2F5EF",
+  muted: "#9BA79C", // secondary text, 7:1 on bg
+
+  // Accent and status
+  accent: "#F0A04B",
+  accentText: "#F6B978",
+  accentSoft: "#33240F",
+  danger: "#FF8A7A",
+  dangerSoft: "#3A1C18",
+  warnBg: "#2C2411",
+  warnText: "#F4CD84",
+
+  // Macros: text-safe tones plus bar fills
+  protein: "#B9A2FF",
+  proteinFill: "#8B5CF6",
+  carbs: "#F7B955",
+  carbsFill: "#F59E0B",
+  fat: "#5FD4E8",
+  fatFill: "#06B6D4",
+
+  placeholder: "#7C887D",
+};
+
+const light: typeof dark = {
+  bg: "#F8F9F5",
   card: "#FFFFFF",
   surfaceTint: "#EEF6F0",
   border: "#E3E8E1",
-  borderStrong: "#6E8A78", // input outline, 3.7:1 on white
+  borderStrong: "#6E8A78",
+  glass: "rgba(27,79,55,0.08)",
 
-  // Brand: fresh green
-  primary: "#246B4B", // solid buttons, active states (white text 6.9:1)
-  primaryDark: "#1B4F37", // text on light surfaces
-  primaryBright: "#4CAF72", // decorative fills on light surfaces
-  primarySoft: "#E8F5EC", // chips, tracks, highlighted cards
+  primary: "#246B4B", // white text 6.9:1
+  primaryDark: "#1B4F37",
+  primaryBright: "#4CAF72",
+  primarySoft: "#E8F5EC",
   onPrimary: "#FFFFFF",
+  onLime: "#0B0F0C",
 
-  // Hero gradient (calorie progress, AI analysis, activity summaries only)
   heroTop: "#1B4F37",
   heroBottom: "#246B4B",
-  onHeroMuted: "#D7EBDD", // 5.3:1 on heroBottom
-  lime: "#DDF58A", // accent for hero ring fill and highlights
-  mint: "#DDF58A", // fill on dark surfaces (alias used by the ring)
+  onHero: "#FFFFFF",
+  onHeroMuted: "#D7EBDD",
+  lime: "#DDF58A",
+  mint: "#DDF58A",
 
-  // Text
   text: "#202820",
-  muted: "#5F675F", // secondary text, 5.9:1 on bg
+  muted: "#5F675F",
 
-  // Accent and status
-  accent: "#E8912D", // soft orange fills
-  accentText: "#8A4B0F", // text on white and accentSoft (6.9:1)
+  accent: "#E8912D",
+  accentText: "#8A4B0F",
   accentSoft: "#FFEDD5",
   danger: "#B42318",
   dangerSoft: "#FDECEA",
   warnBg: "#FFF4E0",
   warnText: "#7C2D12",
 
-  // Macros: text-safe tones plus bar fills
   protein: "#6D28D9",
   proteinFill: "#8B5CF6",
   carbs: "#B45309",
@@ -50,6 +97,23 @@ export const colors = {
 
   placeholder: "#5E6B60",
 };
+
+/** Live palette. Mutated in place by applyPalette, so always read it at render time. */
+export const colors = { ...dark };
+
+const rebuilders: (() => void)[] = [];
+
+/** Module-level styles that read `colors`. They are rebuilt in place when the palette changes. */
+export function themed<T extends object>(make: () => T): T {
+  const obj = { ...make() };
+  rebuilders.push(() => Object.assign(obj, make()));
+  return obj;
+}
+
+export function applyPalette(name: ThemeName) {
+  Object.assign(colors, name === "light" ? light : dark);
+  rebuilders.forEach((r) => r());
+}
 
 export const radius = { xs: 8, sm: 12, md: 20, lg: 28, pill: 999 };
 export const space = (n: number) => n * 4;
@@ -63,7 +127,7 @@ export const motion = {
   base: 320,
   slow: 620,
   stagger: 70,
-  pressScale: 0.97,
+  pressScale: 0.94,
 };
 
 // Native driver runs animations off the JS thread on iOS/Android. Web has no native driver.

@@ -2,7 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useRef } from "react";
 import { Animated, Easing, Image, StyleSheet, Text, View } from "react-native";
-import { colors, useNativeDriver } from "@/lib/theme";
+import { colors, themed, useNativeDriver } from "@/lib/theme";
 import { useReduceMotion } from "./ui";
 
 // The native splash (app.json) shows the same leaf on the same mint colour, so
@@ -84,9 +84,9 @@ export function AnimatedSplash({ ready, onDone }: { ready: boolean; onDone: () =
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 },
   leaf: { width: 170, height: 170 },
   word: { marginTop: 8, fontSize: 36, fontWeight: "900", color: colors.primaryDark, letterSpacing: -0.5 },
   tag: { marginTop: 8, fontSize: 16, color: colors.muted, textAlign: "center" },
-});
+}));

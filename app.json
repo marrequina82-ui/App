@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sibs.fittonesugo"
@@ -22,10 +22,10 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "backgroundColor": "#ECFDF5",
-      "themeColor": "#047857"
+      "backgroundColor": "#0B0F0C",
+      "themeColor": "#0B0F0C"
     },
-    "scheme": "fittonesugo",
+    "scheme": ["fittonesugo", "com.sibs.fittonesugo"],
     "plugins": [
       "expo-router",
       "expo-secure-store",
@@ -37,13 +37,21 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "FittonesuGo uses your camera to photograph meals and nutrition labels so the AI can estimate calories.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
-          "backgroundColor": "#ECFDF5",
+          "backgroundColor": "#0B0F0C",
           "image": "./assets/splash-icon.png",
           "imageWidth": 180
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
@@ -51,7 +59,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ECFDF5"
+      "backgroundColor": "#0B0F0C"
     }
   }
 }

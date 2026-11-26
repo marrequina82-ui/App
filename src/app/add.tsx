@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import { showDialog } from "@/components/dialog";
 import { router, useLocalSearchParams } from "expo-router";
 import { Button, Card, Field, IconTile, MealPicker, Press, Reveal, Screen, Title, styles, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -31,9 +32,9 @@ export default function AddFood() {
       refreshDiary();
       setQuickName("");
       setQuickKcal("");
-      Alert.alert("Added", `${Math.round(kcalNum)} kcal added to ${meal}.`);
+      showDialog({ tone: "success", icon: "check", title: "Added", message: `${Math.round(kcalNum)} kcal added to ${meal}.`, primary: { label: "Done", onPress: () => {} } });
     } catch (e) {
-      Alert.alert("Couldn't add", (e as Error).message);
+      showDialog({ icon: "alert-circle", title: "Couldn't add", message: (e as Error).message, primary: { label: "OK", onPress: () => {} } });
     } finally {
       setSaving(false);
     }

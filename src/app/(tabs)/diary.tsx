@@ -1,7 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
+import { showDialog } from "@/components/dialog";
 import { Chip, Section, SkeletonCard } from "@/components/nutrition";
 import { Card, EmptyState, ErrorText, IconButton, IconTile, Press, Screen, styles, type IconName } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -37,10 +38,24 @@ export default function Diary() {
   const isToday = date === toISODate();
 
   function remove(e: DiaryEntry) {
-    Alert.alert("Remove entry?", `${e.name} · ${Math.round(e.kcal)} kcal`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Remove", style: "destructive", onPress: async () => { await api.deleteEntry(e.id); load(); } },
-    ]);
+    showDialog({
+      icon: "trash-2",
+      title: "Remove entry?",
+      message: `${e.name} · ${Math.round(e.kcal)} kcal`,
+      primary: {
+        label: "Remove",
+        destructive: true,
+        onPress: async () => {
+          try {
+            await api.deleteEntry(e.id);
+            load();
+          } catch (err) {
+            setError((err as Error).message);
+          }
+        },
+      },
+      secondary: { label: "Cancel", onPress: () => {} },
+    });
   }
 
   return (
@@ -64,16 +79,18 @@ export default function Diary() {
         </View>
       </Section>
 
-      <Card style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-        <View>
-          <Text style={styles.muted}>Logged</Text>
-          <Text style={{ fontSize: 26, fontWeight: "900", color: colors.text }}>{kcal} <Text style={{ fontSize: 15, color: colors.muted }}>kcal</Text></Text>
-        </View>
-        <View style={{ alignItems: "flex-end" }}>
-          <Text style={styles.muted}>Goal</Text>
-          <Text style={{ fontSize: 18, fontWeight: "800", color: colors.primaryDark }}>{goal} kcal</Text>
-        </View>
-      </Card>
+      <Section delay={90}>
+        <Card style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+          <View>
+            <Text style={styles.muted}>Logged</Text>
+            <Text style={{ fontSize: 26, fontWeight: "900", color: colors.text }}>{kcal} <Text style={{ fontSize: 15, color: colors.muted }}>kcal</Text></Text>
+          </View>
+          <View style={{ alignItems: "flex-end" }}>
+            <Text style={styles.muted}>Goal</Text>
+            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.primaryDark }}>{goal} kcal</Text>
+          </View>
+        </Card>
+      </Section>
 
       <ErrorText>{error}</ErrorText>
 

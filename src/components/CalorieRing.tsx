@@ -34,7 +34,7 @@ export function CalorieRing({ eaten, goal, size = 180, onDark = false }: { eaten
   const summary = over ? `${Math.abs(remaining)} kcal over your goal` : `${remaining} kcal left of ${Math.round(goal)}`;
   const trackColor = onDark ? "rgba(255,255,255,0.18)" : colors.primarySoft;
   const fillColor = over ? colors.danger : onDark ? colors.mint : colors.primary;
-  const numberColor = onDark ? colors.onPrimary : over ? colors.danger : colors.text;
+  const numberColor = onDark ? colors.onHero : over ? colors.danger : colors.text;
   const captionColor = onDark ? colors.onHeroMuted : colors.muted;
 
   return (

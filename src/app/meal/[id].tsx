@@ -2,8 +2,9 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
-import { Alert, Text, View } from "react-native";
-import { Button, Card, EmptyState, ErrorText, IconTile, Notice, Screen, Title, styles } from "@/components/ui";
+import { Text, View } from "react-native";
+import { showDialog } from "@/components/dialog";
+import { Button, Card, EmptyState, ErrorText, IconTile, Notice, Reveal, Screen, Title, styles } from "@/components/ui";
 import { Chip } from "@/components/nutrition";
 import { api } from "@/lib/api";
 import { useApp } from "@/lib/AppContext";
@@ -42,11 +43,13 @@ export default function MealDetail() {
   const shares = split(entry);
 
   function remove() {
-    Alert.alert("Remove from diary?", `${entry!.name} · ${Math.round(entry!.kcal)} kcal`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
+    showDialog({
+      icon: "trash-2",
+      title: "Remove from diary?",
+      message: `${entry!.name} · ${Math.round(entry!.kcal)} kcal`,
+      primary: {
+        label: "Remove",
+        destructive: true,
         onPress: async () => {
           setBusy(true);
           setError(null);
@@ -61,11 +64,13 @@ export default function MealDetail() {
           }
         },
       },
-    ]);
+      secondary: { label: "Cancel", onPress: () => {} },
+    });
   }
 
   return (
     <Screen>
+      <Reveal>
       <LinearGradient
         colors={[colors.heroTop, colors.heroBottom]}
         start={{ x: 0, y: 0 }}
@@ -76,29 +81,34 @@ export default function MealDetail() {
           <Chip label={MEAL_LABEL[entry.meal]} tone="lime" />
           <Chip label={SOURCE_LABEL[entry.source]} />
         </View>
-        <Text accessibilityRole="header" style={{ fontSize: 24, fontWeight: "800", color: colors.onPrimary }}>{entry.name}</Text>
+        <Text accessibilityRole="header" style={{ fontSize: 24, fontWeight: "800", color: colors.onHero }}>{entry.name}</Text>
         <Text style={{ fontSize: 15, color: colors.onHeroMuted, marginTop: 4 }}>{entry.amount_desc}</Text>
         <View style={{ flexDirection: "row", alignItems: "flex-end", marginTop: space(4) }}>
           <Text style={{ fontSize: 44, fontWeight: "900", color: colors.lime }}>{Math.round(entry.kcal)}</Text>
           <Text style={{ fontSize: 16, color: colors.onHeroMuted, marginBottom: 8, marginLeft: 6 }}>kcal</Text>
         </View>
       </LinearGradient>
+      </Reveal>
 
-      <Title sub="Grams and macros as logged.">Nutrition</Title>
-      <Card>
-        <MacroBlock label="Protein" grams={entry.protein_g} share={shares.p} color={colors.protein} fill={colors.proteinFill} />
-        <MacroBlock label="Carbohydrates" grams={entry.carbs_g} share={shares.c} color={colors.carbs} fill={colors.carbsFill} />
-        <MacroBlock label="Fat" grams={entry.fat_g} share={shares.f} color={colors.fat} fill={colors.fatFill} />
-      </Card>
+      <Reveal delay={80}>
+        <Title sub="Grams and macros as logged.">Nutrition</Title>
+        <Card>
+          <MacroBlock label="Protein" grams={entry.protein_g} share={shares.p} color={colors.protein} fill={colors.proteinFill} />
+          <MacroBlock label="Carbohydrates" grams={entry.carbs_g} share={shares.c} color={colors.carbs} fill={colors.carbsFill} />
+          <MacroBlock label="Fat" grams={entry.fat_g} share={shares.f} color={colors.fat} fill={colors.fatFill} />
+        </Card>
+      </Reveal>
 
-      <Card>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <IconTile name="info" size={40} />
-          <Text style={[styles.muted, { flex: 1 }]}>
-            Ingredient lists aren't stored with diary entries yet, so this screen shows the logged amount and nutrition only.
-          </Text>
-        </View>
-      </Card>
+      <Reveal delay={160}>
+        <Card>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <IconTile name="info" size={40} />
+            <Text style={[styles.muted, { flex: 1 }]}>
+              Ingredient lists aren't stored with diary entries yet, so this screen shows the logged amount and nutrition only.
+            </Text>
+          </View>
+        </Card>
+      </Reveal>
 
       <Notice>Values are estimates from the source you logged them with. Check labels for exact amounts.</Notice>
       <ErrorText>{error}</ErrorText>

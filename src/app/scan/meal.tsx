@@ -1,18 +1,17 @@
-import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Alert, Image, Text, TextInput, View } from "react-native";
-import { Chip, Skeleton, Viewfinder } from "@/components/nutrition";
-import { Button, Card, ErrorText, Field, MacroRow, MealPicker, Notice, Screen, Segmented, styles } from "@/components/ui";
+import { Text, TextInput, View } from "react-native";
+import { showDialog } from "@/components/dialog";
+import { Chip } from "@/components/nutrition";
+import { leaveScanner, ScanScreen } from "@/components/ScanScreen";
+import { Button, Card, MacroRow, MealPicker, Notice, styles } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useApp } from "@/lib/AppContext";
 import { mealForNow } from "@/lib/date";
-import { getPhoto, type PickedImage } from "@/lib/image";
 import { colors, minTouch, radius, space } from "@/lib/theme";
 import type { Meal, MealAnalysis, MealItem } from "@/lib/types";
 
-/** Item as returned by AI plus the user's edited grams. Per-gram values let us rescale. */
 interface EditableItem extends MealItem { baseGrams: number; gramsText: string }
 
 function scaled(i: EditableItem): MealItem {
@@ -27,64 +26,27 @@ export default function SnapMeal() {
   const params = useLocalSearchParams<{ meal?: Meal }>();
   const { date, refreshDiary } = useApp();
   const [meal, setMeal] = useState<Meal>(params.meal ?? mealForNow());
-  const [photo, setPhoto] = useState<PickedImage | null>(null);
-  const [weight, setWeight] = useState("");
-  const [unit, setUnit] = useState<"g" | "kg">("g");
-  const [note, setNote] = useState("");
   const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
   const [items, setItems] = useState<EditableItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const weightNum = Number(weight);
-  const weightError = weight && (!Number.isFinite(weightNum) || weightNum <= 0) ? "Enter a weight greater than zero, or leave it empty." : null;
-  const totalGrams = weight && !weightError ? weightNum * (unit === "kg" ? 1000 : 1) : null;
-
-  async function pick(source: "camera" | "library") {
-    try {
-      setError(null);
-      const p = await getPhoto(source);
-      if (p) {
-        setPhoto(p);
-        setAnalysis(null);
-        setItems([]);
-      }
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
-
-  async function analyze() {
-    if (!photo) return;
-    if (weightError) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await api.analyzeMeal(photo.base64, totalGrams && totalGrams > 0 ? totalGrams : null, note.trim() || null);
-      if (!res.is_food || res.items.length === 0) {
-        setError("I couldn't find food in this photo. Try a clearer, top-down shot of the plate.");
-        return;
-      }
-      setAnalysis(res);
-      setItems(res.items.map((i) => ({ ...i, baseGrams: i.grams, gramsText: String(Math.round(i.grams)) })));
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
+  async function analyze(base64: string) {
+    const res = await api.analyzeMeal(base64, null, null);
+    if (!res.is_food || res.items.length === 0) return false;
+    setAnalysis(res);
+    setItems(res.items.map((i) => ({ ...i, baseGrams: i.grams, gramsText: String(Math.round(i.grams)) })));
+    return true;
   }
 
   const finalItems = items.map(scaled).filter((i) => i.grams > 0);
   const totals = finalItems.reduce(
-    (t, i) => ({ kcal: t.kcal + i.kcal, p: t.p + i.protein_g, c: t.c + i.carbs_g, f: t.f + i.fat_g, g: t.g + i.grams }),
-    { kcal: 0, p: 0, c: 0, f: 0, g: 0 }
+    (t, i) => ({ kcal: t.kcal + i.kcal, p: t.p + i.protein_g, c: t.c + i.carbs_g, f: t.f + i.fat_g }),
+    { kcal: 0, p: 0, c: 0, f: 0 }
   );
 
   async function save() {
     if (finalItems.length === 0) return;
     setSaving(true);
-    setError(null);
     try {
       await api.addEntries(
         finalItems.map((i) => ({
@@ -93,86 +55,55 @@ export default function SnapMeal() {
         }))
       );
       refreshDiary();
-      Alert.alert("Logged", `${Math.round(totals.kcal)} kcal added to ${meal}.`);
-      router.back();
+      leaveScanner();
     } catch (e) {
-      setError((e as Error).message);
+      showDialog({
+        icon: "alert-circle",
+        title: "Couldn't save",
+        message: (e as Error).message || "Your meal wasn't saved. Please try again.",
+        primary: { label: "Try again", onPress: save },
+        secondary: { label: "Cancel", onPress: () => {} },
+      });
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <Screen edges={["bottom"]}>
-      <MealPicker value={meal} onChange={setMeal} />
-
-      {photo ? (
-        <View style={{ borderRadius: radius.lg, overflow: "hidden", marginBottom: space(3) }}>
-          <Image source={{ uri: photo.uri }} accessibilityLabel="Photo of your meal" style={{ width: "100%", aspectRatio: 4 / 3 }} resizeMode="cover" />
-        </View>
-      ) : (
-        <Viewfinder scanning={loading}>
-          <View style={{ alignItems: "center", paddingHorizontal: space(6) }}>
-            <Feather name="aperture" size={36} color={colors.lime} accessible={false} importantForAccessibility="no" />
-            <Text style={{ color: colors.onPrimary, fontWeight: "700", fontSize: 16, marginTop: 10, textAlign: "center" }}>Take a clear photo of your plate</Text>
-            <Text style={{ color: colors.onHeroMuted, fontSize: 14, marginTop: 6, textAlign: "center", lineHeight: 20 }}>Top-down, in good light, with the whole meal in frame.</Text>
-          </View>
-        </Viewfinder>
-      )}
-
-      <View style={{ flexDirection: "row", gap: 10 }}>
-        <View style={{ flex: 1 }}><Button title={photo ? "Retake" : "Camera"} icon="camera" onPress={() => pick("camera")} variant={photo ? "secondary" : "primary"} disabled={loading} /></View>
-        <View style={{ flex: 1 }}><Button title="Gallery" icon="image" onPress={() => pick("library")} variant="secondary" disabled={loading} /></View>
-      </View>
-
-      {photo && !analysis && (
-        <Card style={{ marginTop: 8 }}>
-          <Text style={styles.h2}>Total weight of the meal</Text>
-          <Text style={[styles.muted, { marginBottom: 12 }]}>Weigh it if you can. It makes the estimate much more accurate.</Text>
-          <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
-            <View style={{ flex: 1 }}>
-              <Field label="Weight" value={weight} onChangeText={setWeight} keyboardType="decimal-pad" placeholder={unit === "g" ? "350" : "0.35"} error={weightError} />
-            </View>
-            <View style={{ paddingTop: 24 }}>
-              <Segmented label="Weight unit" options={[{ label: "g", value: "g" }, { label: "kg", value: "kg" }]} value={unit} onChange={setUnit} />
-            </View>
-          </View>
-          <Field label="Anything the photo can't show? (optional)" value={note} onChangeText={setNote} placeholder="e.g. fried in butter, 1 cup rice, no skin" />
-          <Text style={[styles.muted, { marginBottom: 12 }]}>Leave the weight empty and the AI will estimate portion sizes (less accurate).</Text>
-          <Button title={loading ? "Analyzing…" : "Estimate calories"} icon="star" onPress={analyze} loading={loading} disabled={!!weightError} />
-          {loading ? (
-            <View style={{ marginTop: 12, gap: 8 }} accessibilityLabel="Analyzing your meal">
-              <Skeleton width="70%" height={20} />
-              <Skeleton width="45%" height={34} />
-              <Skeleton width="100%" height={12} />
-            </View>
-          ) : null}
-        </Card>
-      )}
-
-      <ErrorText>{error}</ErrorText>
-
-      {analysis && (
+    <ScanScreen
+      titles={{ camera: "Snap a meal", scanning: "Scanning", results: "Your meal" }}
+      hint="Fit the whole plate in the frame"
+      scanTitle="Detecting food…"
+      scanSteps={["Finding food items", "Estimating portions", "Calculating nutrition"]}
+      notFound={{ icon: "search", title: "No food found", message: "We couldn't spot any food in this photo. Try a clear, top-down shot with the whole plate in good light." }}
+      switchAction={{ icon: "tag", caption: "Label", label: "Scan a nutrition label instead", onPress: () => router.replace({ pathname: "/scan/label", params: { meal } }) }}
+      analyze={(p) => analyze(p.base64)}
+      onReset={() => { setAnalysis(null); setItems([]); }}
+      photoLabels={items.map((i) => i.name)}
+      meal={meal}
+      onMealChange={setMeal}
+    >
+      {analysis ? (
         <>
-          <LinearGradient colors={[colors.heroTop, colors.heroBottom]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: radius.lg, padding: space(5), marginTop: 8, marginBottom: space(3) }}>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <Chip label={CONFIDENCE_LABEL[analysis.confidence]} tone="lime" />
-              <Text style={{ color: colors.onHeroMuted, fontSize: 13 }}>{Math.round(totals.g)} g total</Text>
+          <LinearGradient colors={[colors.heroTop, colors.heroBottom]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: radius.md, padding: space(4), marginBottom: space(3) }}>
+            <Chip label={CONFIDENCE_LABEL[analysis.confidence]} tone="lime" />
+            <Text style={{ fontSize: 22, fontWeight: "800", color: colors.onHero, marginTop: 10 }}>{analysis.meal_name}</Text>
+            <View style={{ flexDirection: "row", alignItems: "flex-end", marginTop: space(2), marginBottom: space(2) }}>
+              <Text style={{ fontSize: 36, fontWeight: "900", color: colors.lime }}>{Math.round(totals.kcal)}</Text>
+              <Text style={{ fontSize: 14, color: colors.onHeroMuted, marginBottom: 6, marginLeft: 6 }}>kcal</Text>
             </View>
-            <Text accessibilityRole="header" style={{ fontSize: 20, fontWeight: "800", color: colors.onPrimary, marginTop: 10 }}>{analysis.meal_name}</Text>
-            <View style={{ flexDirection: "row", alignItems: "flex-end", marginTop: space(3) }}>
-              <Text style={{ fontSize: 44, fontWeight: "900", color: colors.lime }}>{Math.round(totals.kcal)}</Text>
-              <Text style={{ fontSize: 16, color: colors.onHeroMuted, marginBottom: 8, marginLeft: 6 }}>kcal (estimate)</Text>
-            </View>
-            <View style={{ marginTop: space(3) }}>
+            <View style={{ backgroundColor: colors.card, borderRadius: radius.sm, padding: space(2) }}>
               <MacroRow protein={totals.p} carbs={totals.c} fat={totals.f} />
             </View>
           </LinearGradient>
 
           {analysis.notes ? <Notice>{analysis.notes}</Notice> : null}
-          {analysis.confidence === "low" && <Notice>The AI isn't very sure about this one. Check the items and grams below.</Notice>}
+          {analysis.confidence === "low" ? <Notice>The AI isn't very sure about this one. Check the items below.</Notice> : null}
 
-          <Text style={[styles.h2, { marginTop: 8 }]}>Items: adjust grams if needed</Text>
+          <MealPicker value={meal} onChange={setMeal} />
+
+          <Text style={[styles.h2, { marginTop: space(2) }]}>Detected items</Text>
+          <Text style={[styles.muted, { marginBottom: space(2) }]}>Adjust grams if the portion looks off.</Text>
           {items.map((it, idx) => {
             const s = scaled(it);
             return (
@@ -187,19 +118,18 @@ export default function SnapMeal() {
                     onChangeText={(t) => setItems((prev) => prev.map((p, i) => (i === idx ? { ...p, gramsText: t } : p)))}
                     keyboardType="decimal-pad"
                     accessibilityLabel={`Grams of ${it.name}`}
-                    style={[styles.input, { width: 92, minHeight: minTouch, textAlign: "right" }]}
+                    style={[styles.input, { width: 76, minHeight: minTouch, textAlign: "right" }]}
                   />
                   <Text style={styles.muted}>g</Text>
                 </View>
               </Card>
             );
           })}
-          <Text style={[styles.muted, { marginBottom: 12 }]}>Set an item to 0 g to leave it out. AI estimates can be off by 20% or more.</Text>
-          <Button title={`Save ${Math.round(totals.kcal)} kcal to ${meal}`} icon="check" onPress={save} loading={saving} disabled={finalItems.length === 0} />
-          <Button title="Start over" variant="ghost" icon="refresh-cw" onPress={() => { setAnalysis(null); setItems([]); }} />
+
+          <Button title={`Save ${Math.round(totals.kcal)} kcal`} icon="check" onPress={save} loading={saving} disabled={finalItems.length === 0} />
         </>
-      )}
-    </Screen>
+      ) : null}
+    </ScanScreen>
   );
 }
 

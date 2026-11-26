@@ -5,8 +5,9 @@ export const MEAL_LABEL: Record<Meal, string> = { breakfast: "Breakfast", lunch:
 export type Sex = "female" | "male";
 export type Activity = "sedentary" | "light" | "moderate" | "active" | "very_active";
 export type Goal = "lose" | "maintain" | "gain";
+export type MacroStyle = "balanced" | "high_protein" | "low_carb";
 
-export interface User { id: number; name: string; email: string }
+export interface User { id: number; name: string; email: string; avatar?: string | null }
 
 export interface Profile {
   sex: Sex;
@@ -17,6 +18,7 @@ export interface Profile {
   activity: Activity;
   goal: Goal;
   weekly_rate_kg: number;
+  macro_style?: MacroStyle;
 }
 
 export interface Targets {
@@ -67,8 +69,5 @@ export interface LabelAnalysis extends Macros {
   serving_desc: string;
   serving_g: number | null;
   servings_per_container: number | null;
-  fiber_g: number | null;
-  sugar_g: number | null;
-  sodium_mg: number | null;
   notes: string;
 }

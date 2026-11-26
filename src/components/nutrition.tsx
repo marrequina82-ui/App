@@ -1,12 +1,26 @@
 import { Feather } from "@expo/vector-icons";
 import { useEffect, useRef, type ReactNode } from "react";
-import { Animated, Easing, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Animated, Easing, Image, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { presetFor } from "@/lib/avatars";
 import { Press, Reveal, useReduceMotion, type IconName } from "./ui";
-import { colors, minTouch, radius, space, useNativeDriver } from "@/lib/theme";
+import { colors, minTouch, radius, space, themed, useNativeDriver } from "@/lib/theme";
 
-/** Circle with initials. Used as the profile avatar. */
-export function Avatar({ name, size = 44 }: { name?: string | null; size?: number }) {
+/** Profile avatar: uploaded photo, built-in preset, or initials. */
+export function Avatar({ name, avatar, size = 44 }: { name?: string | null; avatar?: string | null; size?: number }) {
   const initials = (name ?? "?").split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";
+  const ring = { width: size, height: size, borderRadius: size / 2, borderWidth: 2, borderColor: colors.card, overflow: "hidden" as const };
+  if (avatar?.startsWith("data:image/")) {
+    return <Image source={{ uri: avatar }} style={ring} accessibilityLabel={`Profile photo for ${name ?? "you"}`} />;
+  }
+  const preset = presetFor(avatar);
+  if (preset) {
+    return (
+      <LinearGradient colors={preset.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[ring, { alignItems: "center", justifyContent: "center" }]} accessible accessibilityLabel={`Profile for ${name ?? "you"}`}>
+        <Feather name={preset.icon} size={size * 0.46} color="#0B0F0C" />
+      </LinearGradient>
+    );
+  }
   return (
     <View
       accessible
@@ -120,11 +134,11 @@ export function QuickAction({ icon, label, hint, onPress, tone = "soft" }: { ico
   const solid = tone === "solid";
   return (
     <Press onPress={onPress} accessibilityLabel={`${label}. ${hint}`} style={[styles.quick, solid && { backgroundColor: colors.primary }]}>
-      <View style={[styles.quickIcon, { backgroundColor: solid ? "rgba(255,255,255,0.16)" : colors.primarySoft }]}>
+      <View style={[styles.quickIcon, { backgroundColor: solid ? "rgba(0,0,0,0.12)" : colors.primarySoft }]}>
         <Feather name={icon} size={20} color={solid ? colors.onPrimary : colors.primaryDark} accessible={false} importantForAccessibility="no" />
       </View>
       <Text style={[styles.quickLabel, solid && { color: colors.onPrimary }]}>{label}</Text>
-      <Text style={[styles.quickHint, solid && { color: colors.onHeroMuted }]}>{hint}</Text>
+      <Text style={[styles.quickHint, solid && { color: colors.onPrimary, opacity: 0.75 }]}>{hint}</Text>
     </Press>
   );
 }
@@ -144,7 +158,7 @@ export function SectionTitle({ children, action, onAction }: { children: ReactNo
 
 export function Chip({ label, tone = "soft" }: { label: string; tone?: "soft" | "lime" | "accent" }) {
   const bg = { soft: colors.primarySoft, lime: colors.lime, accent: colors.accentSoft }[tone];
-  const fg = { soft: colors.primaryDark, lime: colors.text, accent: colors.accentText }[tone];
+  const fg = { soft: colors.primaryDark, lime: colors.onLime, accent: colors.accentText }[tone];
   return (
     <View style={{ alignSelf: "flex-start", backgroundColor: bg, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
       <Text style={{ color: fg, fontWeight: "700", fontSize: 12 }}>{label}</Text>
@@ -157,7 +171,7 @@ export function Section({ children, delay = 0 }: { children: ReactNode; delay?: 
   return <Reveal delay={delay}>{children}</Reveal>;
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   card: { backgroundColor: colors.card, borderRadius: radius.md, padding: space(4), marginBottom: space(3), borderWidth: 1, borderColor: colors.border },
   viewfinder: {
     width: "100%",
@@ -184,4 +198,4 @@ const styles = StyleSheet.create({
   quickHint: { fontSize: 13, color: colors.muted, marginTop: 2, lineHeight: 18 },
   sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: space(4), marginBottom: space(2) },
   sectionTitle: { fontSize: 18, fontWeight: "800", color: colors.text },
-});
+}));

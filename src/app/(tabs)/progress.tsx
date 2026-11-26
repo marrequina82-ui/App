@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { useFocusEffect } from "expo-router";
+import { showDialog } from "@/components/dialog";
 import { Chip, Section, Skeleton, SkeletonCard } from "@/components/nutrition";
 import { Button, Card, EmptyState, ErrorText, Field, IconTile, ProgressBar, Screen, Title, styles } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -49,7 +50,7 @@ export default function Progress() {
       setNewWeight("");
       await Promise.all([load(), reloadMe()]);
     } catch (e) {
-      Alert.alert("Couldn't save", (e as Error).message);
+      showDialog({ icon: "alert-circle", title: "Couldn't save", message: (e as Error).message, primary: { label: "Try again", onPress: logWeight }, secondary: { label: "Cancel", onPress: () => {} } });
     } finally {
       setSaving(false);
     }

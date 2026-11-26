@@ -1,13 +1,13 @@
 import { Feather } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { Alert, FlatList, Pressable, Text, TextInput, View } from "react-native";
+import { FlatList, Text, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Chip, Skeleton } from "@/components/nutrition";
-import { Button, Card, EmptyState, ErrorText, Field, IconButton, MacroRow, MealPicker, Press, Segmented, styles } from "@/components/ui";
+import { Button, Card, EmptyState, ErrorText, Field, IconButton, MacroRow, MealPicker, Press, Reveal, Segmented, styles } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useApp } from "@/lib/AppContext";
 import { mealForNow } from "@/lib/date";
-import { colors, minTouch, radius, space } from "@/lib/theme";
+import { colors, minTouch, radius, space, themed } from "@/lib/theme";
 import type { Food, Meal } from "@/lib/types";
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -85,15 +85,19 @@ export default function SearchFood() {
           <View style={{ width: minTouch }} />
         </View>
 
-        <MealPicker value={meal} onChange={setMeal} />
+        <Reveal>
+          <MealPicker value={meal} onChange={setMeal} />
+        </Reveal>
 
-        <Card>
-          <Text accessibilityRole="header" style={[styles.h2, { fontSize: 20 }]}>{selected.name}</Text>
-          <View style={{ flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-            <Chip label={selected.serving_desc} />
-            <Chip label={selected.source === "label" ? "Saved label" : "Database"} tone="soft" />
-          </View>
-        </Card>
+        <Reveal delay={60}>
+          <Card>
+            <Text accessibilityRole="header" style={[styles.h2, { fontSize: 20 }]}>{selected.name}</Text>
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+              <Chip label={selected.serving_desc} />
+              <Chip label={selected.source === "label" ? "Saved label" : "Database"} tone="soft" />
+            </View>
+          </Card>
+        </Reveal>
 
         <Segmented label="Measure by" options={[{ label: "Servings", value: "servings" }, { label: "Grams", value: "grams" }]} value={mode}
           onChange={(m) => { setMode(m); setAmount(m === "servings" ? "1" : String(selected.serving_g)); }} />
@@ -114,13 +118,15 @@ export default function SearchFood() {
           </Press>
         </View>
 
-        <Card style={{ backgroundColor: colors.primarySoft, borderColor: colors.primarySoft }}>
-          <Text style={styles.muted}>Preview for this amount</Text>
-          <Text style={{ fontSize: 34, fontWeight: "900", color: colors.primaryDark, marginTop: 2 }}>{Number.isFinite(kcal) ? kcal : 0} kcal</Text>
-          <View style={{ marginTop: 8 }}>
-            <MacroRow protein={selected.protein_g * factor} carbs={selected.carbs_g * factor} fat={selected.fat_g * factor} />
-          </View>
-        </Card>
+        <Reveal delay={120}>
+          <Card style={{ backgroundColor: colors.primarySoft, borderColor: colors.primarySoft }}>
+            <Text style={styles.muted}>Preview for this amount</Text>
+            <Text style={{ fontSize: 34, fontWeight: "900", color: colors.primaryDark, marginTop: 2 }}>{Number.isFinite(kcal) ? kcal : 0} kcal</Text>
+            <View style={{ marginTop: 8 }}>
+              <MacroRow protein={selected.protein_g * factor} carbs={selected.carbs_g * factor} fat={selected.fat_g * factor} />
+            </View>
+          </Card>
+        </Reveal>
 
         <ErrorText>{error}</ErrorText>
         <Button title={`Add to ${meal}`} icon="plus" onPress={add} loading={saving} disabled={factor <= 0} />
@@ -168,36 +174,35 @@ export default function SearchFood() {
             <EmptyState icon="x-circle" title="No matches" body="Try a different word, or scan the meal or label instead." />
           )
         }
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => choose(item)}
-            accessibilityRole="button"
-            accessibilityLabel={`${item.name}, ${Math.round(item.kcal)} kcal per ${item.serving_desc}`}
-            style={({ pressed }) => ({ marginBottom: space(2), opacity: pressed ? 0.8 : 1 })}
-          >
-            <Card style={{ marginBottom: 0, flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.body, { fontWeight: "700" }]} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.muted} numberOfLines={1}>{item.serving_desc}</Text>
-              </View>
-              {item.source === "label" ? <Chip label="Label" tone="accent" /> : null}
-              <Text style={{ fontSize: 17, fontWeight: "800", color: colors.text }}>{Math.round(item.kcal)}</Text>
-              <Feather name="chevron-right" size={18} color={colors.muted} accessible={false} importantForAccessibility="no" />
-            </Card>
-          </Pressable>
+        renderItem={({ item, index }) => (
+          <Reveal delay={Math.min(index, 8) * 45}>
+            <Press
+              onPress={() => choose(item)}
+              accessibilityLabel={`${item.name}, ${Math.round(item.kcal)} kcal per ${item.serving_desc}`}
+              style={{ marginBottom: space(2) }}
+            >
+              <Card style={{ marginBottom: 0, flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.body, { fontWeight: "700" }]} numberOfLines={1}>{item.name}</Text>
+                  <Text style={styles.muted} numberOfLines={1}>{item.serving_desc}</Text>
+                </View>
+                {item.source === "label" ? <Chip label="Label" tone="accent" /> : null}
+                <Text style={{ fontSize: 17, fontWeight: "800", color: colors.text }}>{Math.round(item.kcal)}</Text>
+                <Feather name="chevron-right" size={18} color={colors.muted} accessible={false} importantForAccessibility="no" />
+              </Card>
+            </Press>
+          </Reveal>
         )}
       />
     </View>
   );
 }
 
-const stepper = {
+const stepper = themed(() => ({
   flex: 1,
   minHeight: minTouch,
-  borderRadius: radius.sm,
-  borderWidth: 1,
-  borderColor: colors.border,
-  backgroundColor: colors.card,
+  borderRadius: radius.pill,
+  backgroundColor: colors.glass,
   alignItems: "center" as const,
   justifyContent: "center" as const,
-};
+}));

@@ -5,7 +5,7 @@ import {
   type AccessibilityState, type GestureResponderEvent, type StyleProp, type TextInputProps, type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, minTouch, motion, radius, space, useNativeDriver } from "@/lib/theme";
+import { colors, minTouch, motion, radius, space, themed, useNativeDriver } from "@/lib/theme";
 import { MEALS, MEAL_LABEL, type Meal } from "@/lib/types";
 
 export type IconName = ComponentProps<typeof Feather>["name"];
@@ -22,23 +22,29 @@ export function useReduceMotion(): boolean {
   return reduce;
 }
 
-/** Fades and lifts children into place. Use a stagger delay for lists of sections. */
+/** Pops children into place (fade, lift, slight scale). Use a stagger delay for lists of sections. */
 export function Reveal({ children, delay = 0, style }: { children: ReactNode; delay?: number; style?: StyleProp<ViewStyle> }) {
   const reduce = useReduceMotion();
   const v = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(v, {
       toValue: 1,
-      duration: reduce ? 0 : motion.base,
+      duration: reduce ? 0 : motion.base + 80,
       delay: reduce ? 0 : delay,
-      easing: Easing.out(Easing.cubic),
+      easing: Easing.out(Easing.back(1.4)),
       useNativeDriver,
     }).start();
   }, [delay, reduce, v]);
   return (
     <Animated.View
       style={[
-        { opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] },
+        {
+          opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: "clamp" }),
+          transform: [
+            { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) },
+            { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] }) },
+          ],
+        },
         style,
       ]}
     >
@@ -67,6 +73,9 @@ export function Press({
     if (reduce) return;
     Animated.spring(s, { toValue: to, useNativeDriver, friction: 6, tension: 280 }).start();
   };
+  // Size and placement go on the touch target; layout and looks go on the box that scales,
+  // so `style` behaves like a normal View style (rows stay rows, backgrounds shrink on press).
+  const { outer, inner } = splitPressStyle(style);
   return (
     <Pressable
       onPress={onPress}
@@ -77,11 +86,26 @@ export function Press({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={accessibilityState ?? { disabled: !!disabled }}
       hitSlop={hitSlop}
-      style={style}
+      style={outer}
     >
-      <Animated.View style={[{ alignSelf: "stretch", transform: [{ scale: s }] }, contentStyle]}>{children}</Animated.View>
+      <Animated.View style={[{ alignSelf: "stretch", flexGrow: 1, transform: [{ scale: s }] }, inner, contentStyle]}>{children}</Animated.View>
     </Pressable>
   );
+}
+
+const OUTER_KEYS = new Set([
+  "flex", "flexGrow", "flexShrink", "flexBasis", "width", "height", "minWidth", "maxWidth", "alignSelf",
+  "margin", "marginTop", "marginBottom", "marginLeft", "marginRight", "marginHorizontal", "marginVertical", "marginStart", "marginEnd",
+  "position", "top", "bottom", "left", "right", "zIndex",
+]);
+
+function splitPressStyle(style: StyleProp<ViewStyle>) {
+  const flat = (StyleSheet.flatten(style) ?? {}) as Record<string, unknown>;
+  const outer: Record<string, unknown> = {};
+  const inner: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(flat)) (OUTER_KEYS.has(k) ? outer : inner)[k] = v;
+  if (flat.justifyContent) outer.justifyContent = flat.justifyContent;
+  return { outer: outer as ViewStyle, inner: inner as ViewStyle };
 }
 
 export function Screen({ children, scroll = true, edges }: { children: ReactNode; scroll?: boolean; edges?: ("top" | "bottom")[] }) {
@@ -147,13 +171,11 @@ export function Button({
   );
 }
 
-/** Icon-only control. Always has an accessible label, since there is no visible text. */
-export function IconButton({ icon, label, onPress, color = colors.primaryDark }: { icon: IconName; label: string; onPress: () => void; color?: string }) {
+/** Icon-only control: frosted round button, like the camera controls. Always has an accessible label. */
+export function IconButton({ icon, label, onPress, color = colors.text }: { icon: IconName; label: string; onPress: () => void; color?: string }) {
   return (
-    <Press onPress={onPress} accessibilityLabel={label} hitSlop={8} style={styles.iconBtn}>
-      <View style={styles.iconBtnInner}>
-        <Feather name={icon} size={22} color={color} />
-      </View>
+    <Press onPress={onPress} accessibilityLabel={label} hitSlop={4} style={styles.iconBtn} contentStyle={styles.iconBtnInner}>
+      <Feather name={icon} size={20} color={color} />
     </Press>
   );
 }
@@ -194,7 +216,7 @@ export function Segmented<T extends string | number>({
               style={[styles.segTrackItem, active && styles.segTrackActive]}
               contentStyle={{ flex: 1, alignItems: "center", justifyContent: "center" }}
             >
-              <Text style={[styles.segTrackText, { color: active ? colors.onPrimary : colors.primaryDark }]}>{o.label}</Text>
+              <Text style={[styles.segTrackText, { color: active ? colors.onPrimary : colors.text }]}>{o.label}</Text>
             </Press>
           );
         })}
@@ -290,7 +312,7 @@ export function ProgressBar({ value, max, color, label }: { value: number; max: 
   );
 }
 
-export const styles = StyleSheet.create({
+export const styles = themed(() => StyleSheet.create({
   screen: { padding: space(5), paddingBottom: space(12) },
   title: { fontSize: 28, fontWeight: "800", color: colors.text, letterSpacing: -0.4 },
   sub: { fontSize: 15, color: colors.muted, marginTop: 4, lineHeight: 22 },
@@ -301,18 +323,12 @@ export const styles = StyleSheet.create({
     marginBottom: space(3),
     borderWidth: 1,
     borderColor: colors.border,
-    // Soft, low-contrast elevation: depth without heavy shadows.
-    shadowColor: colors.heroTop,
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
   },
-  btn: { minHeight: minTouch, paddingVertical: 14, paddingHorizontal: 18, borderRadius: radius.md, alignItems: "center", justifyContent: "center", marginVertical: 6 },
+  btn: { minHeight: minTouch + 4, paddingVertical: 14, paddingHorizontal: 20, borderRadius: radius.pill, alignItems: "center", justifyContent: "center", marginVertical: 6 },
   btnInner: { flexDirection: "row", alignItems: "center", gap: 8 },
-  btnText: { fontSize: 16, fontWeight: "700" },
-  iconBtn: { width: minTouch, height: minTouch, alignItems: "center", justifyContent: "center", borderRadius: minTouch / 2 },
-  iconBtnInner: { alignItems: "center", justifyContent: "center" },
+  btnText: { fontSize: 16, fontWeight: "800" },
+  iconBtn: { width: minTouch, height: minTouch, alignItems: "center", justifyContent: "center" },
+  iconBtnInner: { width: 42, height: 42, flexGrow: 0, borderRadius: 21, backgroundColor: colors.glass, alignItems: "center", justifyContent: "center", alignSelf: "center" },
   label: { fontSize: 14, fontWeight: "600", color: colors.muted, marginBottom: 6 },
   input: { minHeight: minTouch, backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.borderStrong, borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: colors.text },
   inputFocused: { borderColor: colors.primary, borderWidth: 2 },
@@ -324,9 +340,9 @@ export const styles = StyleSheet.create({
   segActive: { backgroundColor: colors.primary },
   segTrack: { flexDirection: "row", backgroundColor: colors.primarySoft, borderRadius: radius.pill, padding: 4, marginBottom: space(4) },
   segTrackItem: { flex: 1, flexBasis: 0, minWidth: 0, minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: radius.pill },
-  segTrackActive: { backgroundColor: colors.primary, shadowColor: colors.heroTop, shadowOpacity: 0.18, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  segTrackActive: { backgroundColor: colors.primary },
   segTrackText: { fontWeight: "700", fontSize: 15 },
-  segText: { color: colors.primaryDark, fontWeight: "600", fontSize: 15 },
+  segText: { color: colors.text, fontWeight: "600", fontSize: 15 },
   errorBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.dangerSoft, borderRadius: radius.sm, padding: space(3), marginVertical: space(2) },
   error: { color: colors.danger, flex: 1, fontSize: 14, fontWeight: "600" },
   notice: { flexDirection: "row", alignItems: "flex-start", gap: 8, backgroundColor: colors.warnBg, padding: space(3), borderRadius: radius.sm, marginBottom: space(3) },
@@ -335,4 +351,4 @@ export const styles = StyleSheet.create({
   h2: { fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 8 },
   body: { fontSize: 16, color: colors.text, lineHeight: 22 },
   muted: { fontSize: 14, color: colors.muted, lineHeight: 20 },
-});
+}));

@@ -1,8 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
+import { showDialog } from "@/components/dialog";
 import { CalorieRing } from "@/components/CalorieRing";
 import { Avatar, QuickAction, Section, SectionTitle, Skeleton, SkeletonCard } from "@/components/nutrition";
 import { Card, EmptyState, ErrorText, IconTile, Press, ProgressBar, Screen, styles } from "@/components/ui";
@@ -59,9 +60,9 @@ export default function Home() {
             <Text style={styles.muted}>{greeting()}</Text>
             <Text accessibilityRole="header" style={{ fontSize: 26, fontWeight: "800", color: colors.text }}>Hi, {firstName}</Text>
           </View>
-          <Pressable onPress={() => router.navigate("/profile")} accessibilityRole="button" accessibilityLabel="Open profile" style={{ minHeight: minTouch, minWidth: minTouch, alignItems: "center", justifyContent: "center" }}>
-            <Avatar name={user?.name} />
-          </Pressable>
+          <Press onPress={() => router.navigate("/profile")} accessibilityLabel="Open profile" style={{ minHeight: minTouch, minWidth: minTouch, alignItems: "center", justifyContent: "center" }} contentStyle={{ alignItems: "center" }}>
+            <Avatar name={user?.name} avatar={user?.avatar} />
+          </Press>
         </View>
         <Text style={[styles.muted, { marginTop: 4 }]}>{prettyDate(today)}</Text>
       </Section>
@@ -106,7 +107,7 @@ export default function Home() {
           <QuickAction icon="camera" label="AI meal scan" hint="Photo + weight" tone="solid" onPress={() => router.navigate("/scan/meal")} />
           <QuickAction icon="tag" label="Scan label" hint="Nutrition facts" onPress={() => router.navigate("/scan/label")} />
           <QuickAction icon="plus-circle" label="Add food" hint="Search or quick add" onPress={() => router.navigate("/add")} />
-          <QuickAction icon="activity" label="Log exercise" hint="Coming soon" onPress={() => Alert.alert("Exercise logging", "Exercise logging isn't connected yet. It will add burned calories to your day when it is.")} />
+          <QuickAction icon="activity" label="Log exercise" hint="Coming soon" onPress={() => showDialog({ tone: "info", icon: "activity", title: "Exercise logging", message: "Exercise logging isn't connected yet. It will add burned calories to your day when it is.", primary: { label: "Got it", onPress: () => {} } })} />
         </View>
       </Section>
 
@@ -141,7 +142,7 @@ export default function Home() {
 function HeroStat({ label, value, emphasis }: { label: string; value: number; emphasis?: boolean }) {
   return (
     <View accessibilityLabel={`${label} ${value} kcal`}>
-      <Text style={{ fontSize: emphasis ? 22 : 18, fontWeight: "800", color: emphasis ? colors.lime : colors.onPrimary }}>{value}</Text>
+      <Text style={{ fontSize: emphasis ? 22 : 18, fontWeight: "800", color: emphasis ? colors.lime : colors.onHero }}>{value}</Text>
       <Text style={{ fontSize: 13, color: colors.onHeroMuted }}>{label}</Text>
     </View>
   );
