@@ -1,25 +1,65 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
+    "name": "FittonesuGo!",
+    "slug": "fittonesugo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sibs.fittonesugo"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#047857",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.sibs.fittonesugo"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "backgroundColor": "#0B0F0C",
+      "themeColor": "#0B0F0C"
+    },
+    "scheme": ["fittonesugo", "com.sibs.fittonesugo"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "FittonesuGo uses your camera to photograph meals and nutrition labels so the AI can estimate calories.",
+          "photosPermission": "FittonesuGo lets you pick a meal or label photo from your gallery."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "FittonesuGo uses your camera to photograph meals and nutrition labels so the AI can estimate calories.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0B0F0C",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0F0C"
     }
   }
 }
